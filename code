@@ -1,0 +1,82 @@
+// basic server
+var http = require('http'); // built in http library
+var fs = require('fs'); // filesystem library to grab index page
+var index = fs.readFileSync('index.html'); // grab index right now
+
+// listen to serial port - console log anything received
+var SerialPort = require("serialport");
+
+const parsers = SerialPort.parsers;
+const parser = new parsers.Readline({
+    // how to receive data
+    // receive data anytime new line is received
+    delimeter: '\r\n'
+});
+
+var port1 = new SerialPort('/dev/cu.usbmodem14401', {
+    baudRate: 9600,
+    dataBits: 8,
+    parity: 'none',
+    stopBits: 1,
+    flowControl: false
+}); // open up port to arduino
+
+port1.pipe(parser); // attach port to parser
+
+// create a server
+var app = http.createServer(function(req, res) {
+    res.writeHead(200, {'Content-Type':'text/html'});
+    res.end(index);
+});
+
+// initialize socket and connect it to app
+var io = require('socket.io').listen(app);
+
+
+io.on('connection', function(data){
+    console.log('Node.js is listening');
+});
+
+parser.on('data', function(data){
+    // receive data from serial port
+    console.log(data);
+    io.emit('data', data);
+});
+
+app.listen(3000);
+app.js
+Node js web server
+<!doctype html>
+<html>
+    <head>
+        <title>Communicating Between a Webpage and an Arduino</title>
+
+        <script src='https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.4/socket.io.js'%3E</script>
+    </head>
+
+    <body>
+        <h1>Paradox</h1>
+        <div id="sample"></div>
+
+        <script>
+        var socket = io();
+
+        socket.on('data', function(data) {
+            console.log(data);
+            document.getElementById('sample').innerHTML = data;
+        });
+        </script>
+
+    </body>
+</html>
+index.html
+{
+    "name": "naughts-and-crosses",
+    "version": "0.0.1",
+    "description": "Node.js web server for communicating between an arduino and a web app via socket.io",
+    "dependencies": {
+        "serialport": "9.0.1",
+        "socket.io": "^2.5.0"
+    }
+}
+package.json
